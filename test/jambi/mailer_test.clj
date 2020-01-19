@@ -6,9 +6,9 @@
 ;; --------------------------------
 ;; "-s 'i am' -b 'a valid' -t 'format@gmail.com'"
 ;; ==> 6x args
-(def subject "-s 'simple-subject")
-(def body "-b simple-body")
-(def to-mail "-t devkotek@gmail.com")
+(def ^:const subject "-s 'simple-subject")
+(def ^:const body "-b simple-body")
+(def ^:const to-mail "-t devkotek@gmail.com")
 ;; --------------------------------
 
 

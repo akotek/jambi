@@ -7,7 +7,8 @@
 ;; CONSTANTS
 ; ---------------------
 (def ^:const regex-space-quotes #"\s(?=(?:[^\']*'[^']*')*[^']*$)")
-(def ^:const help-json {:code 1, :message "SUCCESS", :desc "help shown to user"})
+(def ^:const success {:code 1, :message "SUCCESS", :desc ""})
+(def ^:const usage-msg "usage: <mailer -s [subject] -b [body] -t [first@mail.com,second@mail.com]>")
 
 ; ---------------------
 
@@ -15,7 +16,8 @@
   (logger/debug (format "Starting to ship mail of %" mail))
   ;;MAIN ALGORITHM GOES HERE)
 
-  (logger/debug "Successfully shipped mail"))
+  (logger/debug "Successfully shipped mail")
+  (update success :desc #(str "message sent successfully" %)))
 
 
 (defn to-map [lst]
@@ -35,7 +37,8 @@
 
 (defn help-handler
   (logger/debug "Handling help request...")
-  help-json)
+  (printf usage-msg)
+  (update success :desc #(str "help shown to user" %)))
 
 (defn ship [input]
   (logger/debug "Handling input request")
@@ -52,10 +55,12 @@
 
 
 (defn -main [& args]
-  (try (ship args))
+  (try
+    (ship args))
   (catch Exception e
-    (let [usage-msg "usage: <mailer -s [subject] -b [body] -t [first@mail.com,second@mail.com]>"
-          err (str e)]
+    (let [err (str e)
+          json {:code 0, :message "FAILED", :desc err}]
       (logger/error (err))
-      (printf "ERR: %s, %s" err usage-msg))))
+      (printf "ERR: %s, %s" err usage-msg)
+      json)))
 
