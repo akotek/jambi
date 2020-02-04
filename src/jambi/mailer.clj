@@ -18,21 +18,18 @@
     (apply merge (map combine chopped-even odd))))
 
 
-(defn validate-map [map]
-  (logger/debug "validating map...")
+(defn validate [map]
   (let [expected [:s :b :t]]
     (if (or (not= (keys map) (seq expected))
             (some s/blank? (vals map)))
       throw (IllegalArgumentException. "invalid input: wrong format")
       map)))
 
-(defn help-handler
-  (logger/debug "handling help request...")
+(defn help
   (printf usage-msg)
   (update success :desc #(str "help shown to user" %)))
 
-(defn send-handler [mail]
-  (logger/debug (format "starting to ship mail of %" mail))
+(defn send [mail]
   (try
     (smtp/send mail)
     (logger/debug "successfully shipped mail")
@@ -40,15 +37,18 @@
   (catch Exception e
     throw (IllegalStateException. (str "error sending smtp : " (str e)))))
 
+
 (defn ship [input]
-  (logger/debug "handling input request")
   (let [splitted (s/split input regex-space-quotes)
         num-args (count splitted)
         fst (first splitted)]
     (try
       (cond
-        (and (= (num-args) 1) (= (fst "-h"))) (help-handler)
-        (= (num-args) 6) (send-handler (validate-map (to-map splitted)))
+        (and (= (num-args) 1) (= (fst "-h"))) (help)
+        (= (num-args) 6) (->> splitted
+                              (to-map)
+                              (validate)
+                              (send))
         :else throw (IllegalArgumentException. "invalid input: wrong args")))
     (catch Exception e
       (let [err (str e)
