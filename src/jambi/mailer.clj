@@ -7,9 +7,21 @@
 ;; CONSTANTS
 ; ---------------------
 (def ^:const regex-space-quotes #"\s(?=(?:[^\']*'[^']*')*[^']*$)")
-(def ^:const success {:code 1, :message "SUCCESS", :desc ""})
-(def ^:const usage-msg "usage: <mailer -s [subject] -b [body] -t [first@mail.com,second@mail.com]>")
+(def ^:const valid-msg "mailer -s [subject] -b [body] -t [first@mail.com,...] -cc [first@mail.com,...]")
+(def ^:const usage-msg (str "usage: " "<" valid-msg ">"))
+(def ^:const success 0)
+(def valid-args (count (s/split valid-msg #" ")))
 ; ---------------------
+
+(def errors {0 [:SUCCESS    "message sent"]
+             1 [:HELP       "help shown to user"]
+             2 [:USAGE      "wrong usage"]})
+
+(defn parse [c]
+  (let [[e msg] (errors c)]
+    {:code c
+     :error e
+     :message msg}))
 
 (defn to-map [lst]
   (let [chopped-even (map #(subs % 1) (take-nth 2 lst))
@@ -19,23 +31,22 @@
 
 
 (defn validate [map]
-  (let [expected [:s :b :t]]
-    (if (or (not= (keys map) (seq expected))
-            (some s/blank? (vals map)))
+  (let [expected [:s :b :t :cc]]
+    (if (or (not= (keys map) (seq expected)) (some s/blank? (vals map)))
       throw (IllegalArgumentException. "invalid input: wrong format")
       map)))
 
 (defn help
   (printf usage-msg)
-  (update success :desc #(str "help shown to user" %)))
+  (parse 1))
 
 (defn send [mail]
   (try
     (smtp/send mail)
     (logger/debug "successfully shipped mail")
-    (update success :desc #(str "message sent successfully" %)))
+    (parse success)
   (catch Exception e
-    throw (IllegalStateException. (str "error sending smtp : " (str e)))))
+    throw (IllegalStateException. (str "error sending smtp : " (str e))))))
 
 
 (defn ship [input]
@@ -45,18 +56,17 @@
     (try
       (cond
         (and (= (num-args) 1) (= (fst "-h"))) (help)
-        (= (num-args) 6) (->> splitted
-                              (to-map)
-                              (validate)
-                              (send))
+        (= (num-args) valid-args) (->> splitted
+                                       (to-map)
+                                       (validate)
+                                       (send))
         :else throw (IllegalArgumentException. "invalid input: wrong args")))
     (catch Exception e
       (let [err (str e)
-            resp {:code 0, :message "FAILED", :desc err}]
+            resp (parse 2)]
         (logger/error err)
         (printf resp)))))
 
 
 (defn -main [& args]
   (ship args))
-
